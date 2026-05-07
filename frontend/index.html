@@ -1,0 +1,1020 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>まなびバンク</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Kaisei+Decol:wght@400;700&family=Noto+Sans+JP:wght@300;400;500;700&display=swap');
+
+  :root {
+    --ink: #1a1a2e;
+    --ink-light: #4a4a6a;
+    --paper: #faf8f3;
+    --paper-warm: #f0ebe0;
+    --study: #2d6a4f;
+    --study-light: #d8f3dc;
+    --leisure: #d4791a;
+    --leisure-light: #fde8c8;
+    --balance: #1a5276;
+    --balance-light: #d6eaf8;
+    --accent: #c0392b;
+    --border: #d4cfc4;
+    --shadow: rgba(26,26,46,0.08);
+    --radius: 16px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Noto Sans JP', sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+    min-height: 100vh;
+    padding-bottom: 80px;
+  }
+
+  /* ======= LOGIN ======= */
+  #login-screen {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 32px 24px;
+    background: var(--ink);
+    color: var(--paper);
+  }
+  .login-title {
+    font-family: 'Kaisei Decol', serif;
+    font-size: 2.4rem;
+    letter-spacing: 0.05em;
+    margin-bottom: 8px;
+  }
+  .login-sub {
+    font-size: 0.85rem;
+    color: #aaa;
+    margin-bottom: 40px;
+    letter-spacing: 0.1em;
+  }
+  .login-box {
+    background: #ffffff0f;
+    border: 1px solid #ffffff22;
+    border-radius: var(--radius);
+    padding: 28px 24px;
+    width: 100%;
+    max-width: 360px;
+  }
+  .login-box label {
+    font-size: 0.78rem;
+    letter-spacing: 0.12em;
+    color: #bbb;
+    display: block;
+    margin-bottom: 8px;
+  }
+  .login-box input {
+    width: 100%;
+    background: #ffffff15;
+    border: 1px solid #ffffff30;
+    border-radius: 10px;
+    padding: 14px 16px;
+    color: #fff;
+    font-size: 1rem;
+    font-family: monospace;
+    letter-spacing: 0.15em;
+    margin-bottom: 20px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .login-box input:focus { border-color: #ffffff70; }
+  .login-box input[type="url"] { letter-spacing: 0.02em; font-size: 0.85rem; }
+  .btn-login {
+    width: 100%;
+    background: var(--paper);
+    color: var(--ink);
+    border: none;
+    border-radius: 10px;
+    padding: 15px;
+    font-size: 1rem;
+    font-weight: 700;
+    font-family: 'Noto Sans JP', sans-serif;
+    cursor: pointer;
+    transition: opacity 0.2s;
+  }
+  .btn-login:active { opacity: 0.8; }
+  .login-error {
+    color: #ff6b6b;
+    font-size: 0.83rem;
+    margin-top: 12px;
+    text-align: center;
+    display: none;
+  }
+
+  /* ======= APP ======= */
+  #app { display: none; }
+
+  .top-bar {
+    background: var(--ink);
+    color: var(--paper);
+    padding: 52px 20px 20px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .top-bar-inner {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+  }
+  .app-title {
+    font-family: 'Kaisei Decol', serif;
+    font-size: 1.5rem;
+    letter-spacing: 0.05em;
+  }
+  .logout-btn {
+    font-size: 0.75rem;
+    color: #888;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-family: 'Noto Sans JP', sans-serif;
+  }
+
+  /* ======= TABS ======= */
+  .tab-bar {
+    display: flex;
+    background: var(--paper-warm);
+    border-bottom: 1px solid var(--border);
+    padding: 0 16px;
+    overflow-x: auto;
+    gap: 4px;
+  }
+  .tab-bar::-webkit-scrollbar { display: none; }
+  .tab-btn {
+    flex-shrink: 0;
+    background: none;
+    border: none;
+    padding: 12px 14px;
+    font-size: 0.82rem;
+    font-family: 'Noto Sans JP', sans-serif;
+    color: var(--ink-light);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+  .tab-btn.active {
+    color: var(--ink);
+    font-weight: 700;
+    border-bottom-color: var(--ink);
+  }
+
+  /* ======= PANELS ======= */
+  .panel { display: none; padding: 20px 16px; }
+  .panel.active { display: block; }
+
+  /* ======= BALANCE CARD ======= */
+  .balance-card {
+    background: var(--ink);
+    color: var(--paper);
+    border-radius: var(--radius);
+    padding: 24px 20px;
+    margin-bottom: 16px;
+    position: relative;
+    overflow: hidden;
+  }
+  .balance-card::before {
+    content: '';
+    position: absolute;
+    top: -40px; right: -40px;
+    width: 140px; height: 140px;
+    border-radius: 50%;
+    background: #ffffff08;
+  }
+  .balance-label {
+    font-size: 0.75rem;
+    letter-spacing: 0.12em;
+    color: #aaa;
+    margin-bottom: 6px;
+  }
+  .balance-value {
+    font-family: 'Kaisei Decol', serif;
+    font-size: 3rem;
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+  .balance-value span { font-size: 1.1rem; margin-left: 4px; }
+  .balance-sub {
+    font-size: 0.8rem;
+    color: #888;
+  }
+  .balance-negative { color: #ff6b6b; }
+
+  /* ======= STAT GRID ======= */
+  .stat-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+  .stat-card {
+    border-radius: 12px;
+    padding: 16px;
+    position: relative;
+  }
+  .stat-card.study { background: var(--study-light); }
+  .stat-card.leisure { background: var(--leisure-light); }
+  .stat-label {
+    font-size: 0.7rem;
+    letter-spacing: 0.08em;
+    color: var(--ink-light);
+    margin-bottom: 4px;
+  }
+  .stat-value {
+    font-family: 'Kaisei Decol', serif;
+    font-size: 1.7rem;
+    line-height: 1.1;
+  }
+  .stat-value span { font-size: 0.8rem; }
+  .stat-card.study .stat-value { color: var(--study); }
+  .stat-card.leisure .stat-value { color: var(--leisure); }
+
+  /* ======= RECORD FORM ======= */
+  .form-card {
+    background: #fff;
+    border-radius: var(--radius);
+    padding: 20px;
+    border: 1px solid var(--border);
+    margin-bottom: 16px;
+  }
+  .form-card h3 {
+    font-size: 0.85rem;
+    letter-spacing: 0.1em;
+    color: var(--ink-light);
+    margin-bottom: 16px;
+    font-weight: 500;
+  }
+  .form-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 12px;
+    align-items: center;
+  }
+  .form-row label {
+    font-size: 0.8rem;
+    color: var(--ink-light);
+    flex-shrink: 0;
+    width: 44px;
+  }
+  .form-row input, .form-row select {
+    flex: 1;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 0.95rem;
+    font-family: 'Noto Sans JP', sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .form-row input:focus, .form-row select:focus { border-color: var(--ink); }
+  .form-row input[type="number"] { font-size: 1.1rem; font-weight: 500; }
+
+  .minute-buttons {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+    margin-left: 54px;
+  }
+  .min-btn {
+    background: var(--paper-warm);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 5px 12px;
+    font-size: 0.78rem;
+    cursor: pointer;
+    font-family: 'Noto Sans JP', sans-serif;
+    color: var(--ink-light);
+    transition: all 0.15s;
+  }
+  .min-btn:active { background: var(--ink); color: #fff; border-color: var(--ink); }
+
+  .btn-submit {
+    width: 100%;
+    border: none;
+    border-radius: 10px;
+    padding: 14px;
+    font-size: 1rem;
+    font-weight: 700;
+    font-family: 'Noto Sans JP', sans-serif;
+    cursor: pointer;
+    transition: opacity 0.2s, transform 0.1s;
+  }
+  .btn-submit:active { opacity: 0.85; transform: scale(0.99); }
+  .btn-study { background: var(--study); color: #fff; }
+  .btn-leisure { background: var(--leisure); color: #fff; }
+
+  /* ======= RECORD LIST ======= */
+  .section-title {
+    font-size: 0.75rem;
+    letter-spacing: 0.12em;
+    color: var(--ink-light);
+    margin-bottom: 10px;
+    font-weight: 500;
+  }
+  .record-list { display: flex; flex-direction: column; gap: 8px; }
+  .record-item {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 13px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .record-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .record-dot.study { background: var(--study); }
+  .record-dot.leisure_used { background: var(--leisure); }
+  .record-info { flex: 1; }
+  .record-date { font-size: 0.75rem; color: var(--ink-light); }
+  .record-note { font-size: 0.8rem; color: var(--ink-light); margin-top: 1px; }
+  .record-min {
+    font-family: 'Kaisei Decol', serif;
+    font-size: 1.2rem;
+    color: var(--ink);
+    flex-shrink: 0;
+  }
+  .record-min span { font-size: 0.7rem; }
+  .delete-btn {
+    background: none;
+    border: none;
+    color: #ccc;
+    font-size: 1.1rem;
+    cursor: pointer;
+    padding: 4px;
+    flex-shrink: 0;
+  }
+  .delete-btn:active { color: var(--accent); }
+
+  /* ======= CHARTS ======= */
+  .chart-controls {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .period-btn {
+    flex: 1;
+    background: var(--paper-warm);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 9px;
+    font-size: 0.82rem;
+    cursor: pointer;
+    font-family: 'Noto Sans JP', sans-serif;
+    color: var(--ink-light);
+    transition: all 0.2s;
+  }
+  .period-btn.active {
+    background: var(--ink);
+    color: #fff;
+    border-color: var(--ink);
+  }
+  .chart-wrap {
+    background: #fff;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    padding: 16px;
+    margin-bottom: 14px;
+  }
+  .chart-title {
+    font-size: 0.75rem;
+    letter-spacing: 0.1em;
+    color: var(--ink-light);
+    margin-bottom: 12px;
+  }
+  .chart-wrap canvas { max-height: 200px; }
+
+  /* ======= SETTINGS ======= */
+  .settings-section { margin-bottom: 24px; }
+  .settings-section h3 {
+    font-size: 0.75rem;
+    letter-spacing: 0.12em;
+    color: var(--ink-light);
+    margin-bottom: 12px;
+    font-weight: 500;
+  }
+  .settings-btn {
+    width: 100%;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    text-align: left;
+    font-size: 0.9rem;
+    font-family: 'Noto Sans JP', sans-serif;
+    color: var(--ink);
+    cursor: pointer;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: background 0.15s;
+  }
+  .settings-btn:active { background: var(--paper-warm); }
+  .settings-btn .icon { font-size: 1.1rem; }
+  .danger-btn { color: var(--accent); border-color: #f5c6c6; }
+
+  /* ======= BOTTOM NAV ======= */
+  .bottom-nav {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: var(--ink);
+    display: flex;
+    padding: 10px 0 20px;
+    z-index: 200;
+    border-top: 1px solid #333;
+  }
+  .nav-btn {
+    flex: 1;
+    background: none;
+    border: none;
+    color: #666;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    cursor: pointer;
+    padding: 4px 0;
+    transition: color 0.2s;
+    font-family: 'Noto Sans JP', sans-serif;
+  }
+  .nav-btn.active { color: var(--paper); }
+  .nav-btn .nav-icon { font-size: 1.4rem; }
+  .nav-btn .nav-label { font-size: 0.6rem; letter-spacing: 0.05em; }
+
+  /* ======= TOAST ======= */
+  .toast {
+    position: fixed;
+    top: 20px; left: 50%;
+    transform: translateX(-50%) translateY(-80px);
+    background: var(--ink);
+    color: var(--paper);
+    padding: 12px 24px;
+    border-radius: 24px;
+    font-size: 0.85rem;
+    z-index: 999;
+    transition: transform 0.3s ease;
+    white-space: nowrap;
+    pointer-events: none;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+
+  /* ======= LOADING ======= */
+  .loading {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--ink-light);
+    font-size: 0.85rem;
+  }
+  .spinner {
+    display: inline-block;
+    width: 20px; height: 20px;
+    border: 2px solid var(--border);
+    border-top-color: var(--ink);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    margin-bottom: 10px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .empty-state {
+    text-align: center;
+    padding: 30px 20px;
+    color: var(--ink-light);
+    font-size: 0.83rem;
+  }
+</style>
+</head>
+<body>
+
+<!-- ===== LOGIN ===== -->
+<div id="login-screen">
+  <div class="login-title">まなびバンク</div>
+  <div class="login-sub">学習と余暇の記録帳</div>
+  <div class="login-box">
+    <label>GAS URL</label>
+    <input type="url" id="input-url" placeholder="https://script.google.com/macros/s/..." autocomplete="off">
+    <label>パスワード</label>
+    <input type="password" id="input-key" placeholder="••••••••" autocomplete="current-password">
+    <button class="btn-login" onclick="doLogin()">ログイン</button>
+    <div class="login-error" id="login-error">URLまたはパスワードが正しくありません</div>
+  </div>
+</div>
+
+<!-- ===== APP ===== -->
+<div id="app">
+  <div class="top-bar">
+    <div class="top-bar-inner">
+      <div class="app-title">まなびバンク</div>
+      <button class="logout-btn" onclick="doLogout()">ログアウト</button>
+    </div>
+  </div>
+
+  <!-- TAB BAR -->
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="switchTab('home', this)">ホーム</button>
+    <button class="tab-btn" onclick="switchTab('study', this)">学習記録</button>
+    <button class="tab-btn" onclick="switchTab('leisure', this)">余暇記録</button>
+    <button class="tab-btn" onclick="switchTab('chart', this)">グラフ</button>
+    <button class="tab-btn" onclick="switchTab('settings', this)">設定</button>
+  </div>
+
+  <!-- HOME -->
+  <div id="panel-home" class="panel active">
+    <div id="home-content"><div class="loading"><div class="spinner"></div><br>読み込み中...</div></div>
+  </div>
+
+  <!-- STUDY -->
+  <div id="panel-study" class="panel">
+    <div class="form-card">
+      <h3>学習時間を記録する</h3>
+      <div class="form-row">
+        <label>日付</label>
+        <input type="date" id="study-date">
+      </div>
+      <div class="form-row">
+        <label>時間</label>
+        <input type="number" id="study-minutes" placeholder="0" min="1" max="1440">
+        <span style="font-size:0.85rem;color:var(--ink-light);margin-left:4px">分</span>
+      </div>
+      <div class="minute-buttons">
+        <button class="min-btn" onclick="addMin('study-minutes',30)">+30分</button>
+        <button class="min-btn" onclick="addMin('study-minutes',60)">+1時間</button>
+        <button class="min-btn" onclick="addMin('study-minutes',90)">+1.5時間</button>
+        <button class="min-btn" onclick="addMin('study-minutes',120)">+2時間</button>
+        <button class="min-btn" onclick="setMin('study-minutes',0)">クリア</button>
+      </div>
+      <div class="form-row">
+        <label>メモ</label>
+        <input type="text" id="study-note" placeholder="数学・英語など（任意）">
+      </div>
+      <button class="btn-submit btn-study" onclick="submitStudy()">学習時間を記録する</button>
+    </div>
+    <div class="section-title">最近の学習記録</div>
+    <div class="record-list" id="study-list"><div class="loading"><div class="spinner"></div></div></div>
+  </div>
+
+  <!-- LEISURE -->
+  <div id="panel-leisure" class="panel">
+    <div class="form-card">
+      <h3>余暇利用時間を記録する</h3>
+      <div class="form-row">
+        <label>日付</label>
+        <input type="date" id="leisure-date">
+      </div>
+      <div class="form-row">
+        <label>時間</label>
+        <input type="number" id="leisure-minutes" placeholder="0" min="1" max="1440">
+        <span style="font-size:0.85rem;color:var(--ink-light);margin-left:4px">分</span>
+      </div>
+      <div class="minute-buttons">
+        <button class="min-btn" onclick="addMin('leisure-minutes',15)">+15分</button>
+        <button class="min-btn" onclick="addMin('leisure-minutes',30)">+30分</button>
+        <button class="min-btn" onclick="addMin('leisure-minutes',60)">+1時間</button>
+        <button class="min-btn" onclick="addMin('leisure-minutes',120)">+2時間</button>
+        <button class="min-btn" onclick="setMin('leisure-minutes',0)">クリア</button>
+      </div>
+      <div class="form-row">
+        <label>メモ</label>
+        <input type="text" id="leisure-note" placeholder="YouTube・ゲームなど（任意）">
+      </div>
+      <button class="btn-submit btn-leisure" onclick="submitLeisure()">余暇利用時間を記録する</button>
+    </div>
+    <div class="section-title">最近の余暇記録</div>
+    <div class="record-list" id="leisure-list"><div class="loading"><div class="spinner"></div></div></div>
+  </div>
+
+  <!-- CHART -->
+  <div id="panel-chart" class="panel">
+    <div class="chart-controls">
+      <button class="period-btn active" onclick="switchPeriod('day', this)">日別</button>
+      <button class="period-btn" onclick="switchPeriod('week', this)">週別</button>
+      <button class="period-btn" onclick="switchPeriod('month', this)">月別</button>
+    </div>
+    <div class="chart-wrap">
+      <div class="chart-title">学習時間（分）</div>
+      <canvas id="chart-study"></canvas>
+    </div>
+    <div class="chart-wrap">
+      <div class="chart-title">余暇可能時間 / 余暇利用時間（累計・分）</div>
+      <canvas id="chart-leisure"></canvas>
+    </div>
+  </div>
+
+  <!-- SETTINGS -->
+  <div id="panel-settings" class="panel">
+    <div class="settings-section">
+      <h3>データ管理</h3>
+      <button class="settings-btn" onclick="doBackup()">
+        <span class="icon">💾</span> JSONバックアップをダウンロード
+      </button>
+      <button class="settings-btn" onclick="document.getElementById('restore-file').click()">
+        <span class="icon">📂</span> バックアップから復元
+      </button>
+      <input type="file" id="restore-file" accept=".json" style="display:none" onchange="doRestore(event)">
+    </div>
+    <div class="settings-section">
+      <h3>アカウント</h3>
+      <button class="settings-btn danger-btn" onclick="doLogout()">
+        <span class="icon">🔓</span> ログアウト
+      </button>
+    </div>
+    <div style="font-size:0.72rem;color:var(--ink-light);text-align:center;margin-top:16px;line-height:1.8">
+      まなびバンク<br>
+      余暇可能時間 ＝ 学習時間 × 1/4
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// =====================================================
+// STATE
+// =====================================================
+let GAS_URL = '';
+let API_KEY = '';
+let records = [];
+let chartStudy = null;
+let chartLeisure = null;
+let currentPeriod = 'day';
+
+// =====================================================
+// LOGIN / LOGOUT
+// =====================================================
+function doLogin() {
+  const url = document.getElementById('input-url').value.trim();
+  const key = document.getElementById('input-key').value.trim();
+  if (!url || !key) { showLoginError(); return; }
+
+  // 接続確認
+  fetch(`${url}?action=getSummary&apiKey=${encodeURIComponent(key)}`)
+    .then(r => r.json())
+    .then(data => {
+      if (data.error === 'Unauthorized') { showLoginError(); return; }
+      GAS_URL = url;
+      API_KEY = key;
+      localStorage.setItem('gasUrl', url);
+      localStorage.setItem('apiKey', key);
+      startApp();
+    })
+    .catch(() => showLoginError());
+}
+
+function showLoginError() {
+  document.getElementById('login-error').style.display = 'block';
+}
+
+function doLogout() {
+  localStorage.removeItem('gasUrl');
+  localStorage.removeItem('apiKey');
+  location.reload();
+}
+
+function startApp() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  setTodayDates();
+  loadAll();
+}
+
+// =====================================================
+// INIT
+// =====================================================
+window.addEventListener('DOMContentLoaded', () => {
+  const url = localStorage.getItem('gasUrl');
+  const key = localStorage.getItem('apiKey');
+  if (url && key) {
+    GAS_URL = url;
+    API_KEY = key;
+    startApp();
+  }
+});
+
+function setTodayDates() {
+  const today = new Date().toISOString().slice(0, 10);
+  document.getElementById('study-date').value = today;
+  document.getElementById('leisure-date').value = today;
+}
+
+// =====================================================
+// DATA
+// =====================================================
+async function api(params) {
+  const qs = new URLSearchParams({ ...params, apiKey: API_KEY });
+  const r = await fetch(`${GAS_URL}?${qs}`);
+  return r.json();
+}
+
+async function apiPost(body) {
+  const r = await fetch(GAS_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ...body, apiKey: API_KEY }),
+  });
+  return r.json();
+}
+
+async function loadAll() {
+  const data = await api({ action: 'getRecords' });
+  records = data.records || [];
+  renderHome();
+  renderStudyList();
+  renderLeisureList();
+  renderCharts();
+}
+
+// =====================================================
+// SUMMARY CALC (client-side for speed)
+// =====================================================
+function calcSummary() {
+  const totalStudy = records.filter(r => r.type === 'study').reduce((s, r) => s + r.minutes, 0);
+  const totalLeisureAvailable = Math.floor(totalStudy / 4);
+  const totalLeisureUsed = records.filter(r => r.type === 'leisure_used').reduce((s, r) => s + r.minutes, 0);
+  return { totalStudy, totalLeisureAvailable, totalLeisureUsed, balance: totalLeisureAvailable - totalLeisureUsed };
+}
+
+function fmtMin(m) {
+  if (m === 0) return '0分';
+  const h = Math.floor(Math.abs(m) / 60);
+  const min = Math.abs(m) % 60;
+  const sign = m < 0 ? '-' : '';
+  if (h === 0) return `${sign}${min}分`;
+  if (min === 0) return `${sign}${h}時間`;
+  return `${sign}${h}時間${min}分`;
+}
+
+// =====================================================
+// HOME
+// =====================================================
+function renderHome() {
+  const s = calcSummary();
+  const balNeg = s.balance < 0;
+  document.getElementById('home-content').innerHTML = `
+    <div class="balance-card">
+      <div class="balance-label">余暇残高</div>
+      <div class="balance-value ${balNeg ? 'balance-negative' : ''}">${fmtMin(s.balance)}</div>
+      <div class="balance-sub">余暇可能 ${fmtMin(s.totalLeisureAvailable)}　利用済 ${fmtMin(s.totalLeisureUsed)}</div>
+    </div>
+    <div class="stat-grid">
+      <div class="stat-card study">
+        <div class="stat-label">総学習時間</div>
+        <div class="stat-value">${fmtMin(s.totalStudy)}</div>
+      </div>
+      <div class="stat-card leisure">
+        <div class="stat-label">余暇可能時間</div>
+        <div class="stat-value">${fmtMin(s.totalLeisureAvailable)}</div>
+      </div>
+    </div>
+    <div class="section-title">最近の記録（全件）</div>
+    <div class="record-list">
+      ${records.slice().sort((a,b) => b.date.localeCompare(a.date)).slice(0,10).map(r => recordHtml(r)).join('') || '<div class="empty-state">まだ記録がありません</div>'}
+    </div>
+  `;
+}
+
+// =====================================================
+// RECORD LISTS
+// =====================================================
+function recordHtml(r) {
+  const typeLabel = r.type === 'study' ? '学習' : '余暇利用';
+  return `
+    <div class="record-item" id="rec-${r.id}">
+      <div class="record-dot ${r.type}"></div>
+      <div class="record-info">
+        <div class="record-date">${r.date}　${typeLabel}</div>
+        ${r.note ? `<div class="record-note">${escHtml(r.note)}</div>` : ''}
+      </div>
+      <div class="record-min">${fmtMin(r.minutes)}</div>
+      <button class="delete-btn" onclick="deleteRecord('${r.id}')">×</button>
+    </div>`;
+}
+
+function renderStudyList() {
+  const list = records.filter(r => r.type === 'study').sort((a,b) => b.date.localeCompare(a.date)).slice(0,20);
+  document.getElementById('study-list').innerHTML = list.length
+    ? list.map(r => recordHtml(r)).join('')
+    : '<div class="empty-state">まだ記録がありません</div>';
+}
+
+function renderLeisureList() {
+  const list = records.filter(r => r.type === 'leisure_used').sort((a,b) => b.date.localeCompare(a.date)).slice(0,20);
+  document.getElementById('leisure-list').innerHTML = list.length
+    ? list.map(r => recordHtml(r)).join('')
+    : '<div class="empty-state">まだ記録がありません</div>';
+}
+
+// =====================================================
+// SUBMIT
+// =====================================================
+async function submitStudy() {
+  const date = document.getElementById('study-date').value;
+  const minutes = parseInt(document.getElementById('study-minutes').value);
+  const note = document.getElementById('study-note').value.trim();
+  if (!date || !minutes || minutes <= 0) { showToast('日付と時間を入力してください'); return; }
+
+  const r = await apiPost({ action: 'addRecord', date, type: 'study', minutes, note });
+  if (r.error) { showToast('エラー: ' + r.error); return; }
+
+  document.getElementById('study-minutes').value = '';
+  document.getElementById('study-note').value = '';
+  showToast(`✅ 学習 ${fmtMin(minutes)} 記録しました`);
+  loadAll();
+}
+
+async function submitLeisure() {
+  const date = document.getElementById('leisure-date').value;
+  const minutes = parseInt(document.getElementById('leisure-minutes').value);
+  const note = document.getElementById('leisure-note').value.trim();
+  if (!date || !minutes || minutes <= 0) { showToast('日付と時間を入力してください'); return; }
+
+  const s = calcSummary();
+  if (minutes > s.balance) {
+    if (!confirm(`余暇残高(${fmtMin(s.balance)})を超えています。記録しますか？`)) return;
+  }
+
+  const r = await apiPost({ action: 'addRecord', date, type: 'leisure_used', minutes, note });
+  if (r.error) { showToast('エラー: ' + r.error); return; }
+
+  document.getElementById('leisure-minutes').value = '';
+  document.getElementById('leisure-note').value = '';
+  showToast(`✅ 余暇利用 ${fmtMin(minutes)} 記録しました`);
+  loadAll();
+}
+
+async function deleteRecord(id) {
+  if (!confirm('この記録を削除しますか？')) return;
+  const r = await apiPost({ action: 'deleteRecord', id });
+  if (r.error) { showToast('削除失敗: ' + r.error); return; }
+  showToast('削除しました');
+  loadAll();
+}
+
+// =====================================================
+// CHARTS
+// =====================================================
+function switchPeriod(period, btn) {
+  currentPeriod = period;
+  document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderCharts();
+}
+
+function renderCharts() {
+  const grouped = groupRecords(currentPeriod);
+  const labels = grouped.labels;
+
+  if (chartStudy) chartStudy.destroy();
+  if (chartLeisure) chartLeisure.destroy();
+
+  const ctxS = document.getElementById('chart-study').getContext('2d');
+  chartStudy = new Chart(ctxS, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: '学習時間（分）',
+        data: grouped.study,
+        backgroundColor: '#2d6a4f99',
+        borderColor: '#2d6a4f',
+        borderWidth: 1,
+        borderRadius: 4,
+      }]
+    },
+    options: chartOpts()
+  });
+
+  const ctxL = document.getElementById('chart-leisure').getContext('2d');
+  chartLeisure = new Chart(ctxL, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { label: '余暇可能（分）', data: grouped.available, backgroundColor: '#d4791a55', borderColor: '#d4791a', borderWidth: 1, borderRadius: 4 },
+        { label: '余暇利用（分）', data: grouped.used, backgroundColor: '#d4791acc', borderColor: '#a05010', borderWidth: 1, borderRadius: 4 },
+      ]
+    },
+    options: chartOpts()
+  });
+}
+
+function chartOpts() {
+  return {
+    responsive: true,
+    plugins: { legend: { labels: { font: { family: 'Noto Sans JP', size: 11 }, color: '#4a4a6a' } } },
+    scales: {
+      x: { ticks: { font: { size: 10 }, color: '#4a4a6a' }, grid: { display: false } },
+      y: { ticks: { font: { size: 10 }, color: '#4a4a6a' }, grid: { color: '#e8e4dc' }, beginAtZero: true }
+    }
+  };
+}
+
+function groupRecords(period) {
+  const fmt = d => {
+    if (period === 'day') return d.slice(0, 10);
+    if (period === 'week') {
+      const dt = new Date(d);
+      const day = dt.getDay();
+      const diff = dt.getDate() - day + (day === 0 ? -6 : 1);
+      const mon = new Date(dt.setDate(diff));
+      return mon.toISOString().slice(0, 10);
+    }
+    return d.slice(0, 7);
+  };
+
+  const studyMap = {}, usedMap = {};
+  records.forEach(r => {
+    const key = fmt(r.date);
+    if (r.type === 'study') studyMap[key] = (studyMap[key] || 0) + r.minutes;
+    if (r.type === 'leisure_used') usedMap[key] = (usedMap[key] || 0) + r.minutes;
+  });
+
+  const allKeys = [...new Set([...Object.keys(studyMap), ...Object.keys(usedMap)])].sort();
+  const recent = allKeys.slice(-14);
+
+  return {
+    labels: recent,
+    study: recent.map(k => studyMap[k] || 0),
+    available: recent.map(k => Math.floor((studyMap[k] || 0) / 4)),
+    used: recent.map(k => usedMap[k] || 0),
+  };
+}
+
+// =====================================================
+// BACKUP / RESTORE
+// =====================================================
+async function doBackup() {
+  const data = await api({ action: 'backup' });
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `manabi-backup-${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  showToast('バックアップをダウンロードしました');
+}
+
+async function doRestore(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const text = await file.text();
+  const data = JSON.parse(text);
+  if (!data.records) { showToast('不正なバックアップファイルです'); return; }
+  if (!confirm(`${data.records.length}件のデータを復元します。現在のデータは上書きされます。よろしいですか？`)) return;
+  const r = await apiPost({ action: 'restore', records: data.records });
+  if (r.error) { showToast('復元失敗: ' + r.error); return; }
+  showToast(`✅ ${r.restored}件復元しました`);
+  loadAll();
+  event.target.value = '';
+}
+
+// =====================================================
+// UI HELPERS
+// =====================================================
+function switchTab(tab, btn) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(`panel-${tab}`).classList.add('active');
+  btn.classList.add('active');
+}
+
+function addMin(id, v) {
+  const el = document.getElementById(id);
+  el.value = (parseInt(el.value) || 0) + v;
+}
+function setMin(id, v) {
+  document.getElementById(id).value = v || '';
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+</script>
+</body>
+</html>
