@@ -727,11 +727,12 @@ async function api(params) {
 }
 
 async function apiPost(body) {
-  const r = await fetch(GAS_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ ...body, apiKey: API_KEY }),
-  });
+  const params = new URLSearchParams({ ...body, apiKey: API_KEY });
+  // restoreのrecordsはJSONなので別途処理
+  if (body.records) {
+    params.set('records', JSON.stringify(body.records));
+  }
+  const r = await fetch(`${GAS_URL}?${params}`);
   return r.json();
 }
 

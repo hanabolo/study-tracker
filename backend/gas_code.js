@@ -13,7 +13,7 @@ function doGet(e) {
   try {
     const key = e.parameter.apiKey;
     if (key !== API_KEY) {
-      return jsonResponse({ error: "Unauthorized" }, 401);
+      return jsonResponse({ error: "Unauthorized" });
     }
 
     const action = e.parameter.action;
@@ -35,10 +35,41 @@ function doGet(e) {
       return jsonResponse({ records, exportedAt: new Date().toISOString() });
     }
 
-    return jsonResponse({ error: "Unknown action" }, 400);
+    if (action === "addRecord") {
+      const { date, type, minutes, note } = e.parameter;
+      const id = Utilities.getUuid();
+      const now = new Date().toISOString();
+      sheet.appendRow([id, date, type, Number(minutes), note || "", now]);
+      return jsonResponse({ success: true, id });
+    }
 
+    if (action === "deleteRecord") {
+      const { id } = e.parameter;
+      const data = sheet.getDataRange().getValues();
+      for (let i = 1; i < data.length; i++) {
+        if (data[i][0] === id) {
+          sheet.deleteRow(i + 1);
+          return jsonResponse({ success: true });
+        }
+      }
+      return jsonResponse({ error: "Record not found" });
+    }
+
+    if (action === "restore") {
+      const records = JSON.parse(e.parameter.records);
+      const lastRow = sheet.getLastRow();
+      if (lastRow > 1) {
+        sheet.deleteRows(2, lastRow - 1);
+      }
+      records.forEach(r => {
+        sheet.appendRow([r.id, r.date, r.type, r.minutes, r.note || "", r.createdAt]);
+      });
+      return jsonResponse({ success: true, restored: records.length });
+    }
+
+    return jsonResponse({ error: "Unknown action" });
   } catch (err) {
-    return jsonResponse({ error: err.message }, 500);
+    return jsonResponse({ error: err.message });
   }
 }
 
