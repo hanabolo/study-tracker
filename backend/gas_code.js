@@ -152,7 +152,7 @@ function calcSummary(records) {
   };
 }
 
-function jsonResponse(data, statusCode) {
+function jsonResponse(data) {
   const output = ContentService.createTextOutput(JSON.stringify(data));
   output.setMimeType(ContentService.MimeType.JSON);
   return output;
