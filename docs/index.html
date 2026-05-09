@@ -811,7 +811,7 @@ function renderHome() {
     </div>
     <div class="section-title">最近の記録（全件）</div>
     <div class="record-list">
-      ${records.slice().sort((a,b) => b.date.localeCompare(a.date)).slice(0,10).map(r => recordHtml(r)).join('') || '<div class="empty-state">まだ記録がありません</div>'}
+      ${records.slice().sort((a,b) => b.createdAt.localeCompare(a.createdAt)).slice(0,10).map(r => recordHtml(r)).join('') || '<div class="empty-state">まだ記録がありません</div>'}
     </div>
   `;
 }
@@ -825,7 +825,7 @@ function recordHtml(r) {
     <div class="record-item" id="rec-${r.id}">
       <div class="record-dot ${r.type}"></div>
       <div class="record-info">
-        <div class="record-date">${r.date}　${typeLabel}　${fmtDate(r.createdAt)}</div>
+        <div class="record-date">${fmtDate(r.createdAt)}　${typeLabel}</div>
         ${r.note ? `<div class="record-note">${escHtml(r.note)}</div>` : ''}
       </div>
       <div class="record-min">${fmtMin(r.minutes)}</div>
@@ -834,14 +834,14 @@ function recordHtml(r) {
 }
 
 function renderStudyList() {
-  const list = records.filter(r => r.type === 'study').sort((a,b) => b.date.localeCompare(a.date)).slice(0,20);
+  const list = records.filter(r => r.type === 'study').sort((a,b) => b.createdAt.localeCompare(a.createdAt)).slice(0,20);
   document.getElementById('study-list').innerHTML = list.length
     ? list.map(r => recordHtml(r)).join('')
     : '<div class="empty-state">まだ記録がありません</div>';
 }
 
 function renderLeisureList() {
-  const list = records.filter(r => r.type === 'leisure_used').sort((a,b) => b.date.localeCompare(a.date)).slice(0,20);
+  const list = records.filter(r => r.type === 'leisure_used').sort((a,b) => b.createdAt.localeCompare(a.createdAt)).slice(0,20);
   document.getElementById('leisure-list').innerHTML = list.length
     ? list.map(r => recordHtml(r)).join('')
     : '<div class="empty-state">まだ記録がありません</div>';
