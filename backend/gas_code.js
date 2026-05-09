@@ -152,7 +152,13 @@ function getAllRecords(sheet) {
   const headers = data[0];
   return data.slice(1).map(row => {
     const obj = {};
-    headers.forEach((h, i) => obj[h] = row[i]);
+    headers.forEach((h, i) => {
+      if (row[i] instanceof Date) {
+        obj[h] = Utilities.formatDate(row[i], 'Asia/Tokyo', 'yyyy-MM-dd');
+      } else {
+        obj[h] = row[i];
+      }
+    });
     obj.minutes = Number(obj.minutes);
     return obj;
   });
