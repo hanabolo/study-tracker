@@ -825,7 +825,7 @@ function recordHtml(r) {
     <div class="record-item" id="rec-${r.id}">
       <div class="record-dot ${r.type}"></div>
       <div class="record-info">
-        <div class="record-date">${r.date}　${typeLabel}　${fmtDate(r.createdAt)}</div>
+        <div class="record-date">${fmtDate(r.createdAt)}　${typeLabel}</div>
         ${r.note ? `<div class="record-note">${escHtml(r.note)}</div>` : ''}
       </div>
       <div class="record-min">${fmtMin(r.minutes)}</div>
