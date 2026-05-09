@@ -777,6 +777,16 @@ function fmtDate(isoStr) {
   });
 }
 
+function toJSTDateString(dateStr) {
+  const d = new Date(dateStr);
+  return d.toLocaleDateString('ja-JP', {
+    timeZone: 'Asia/Tokyo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).replace(/\//g, '-');
+}
+
 // =====================================================
 // HOME
 // =====================================================
@@ -944,15 +954,21 @@ function chartOpts() {
 
 function groupRecords(period) {
   const fmt = d => {
-    if (period === 'day') return d.slice(0, 10);
+    if (period === 'day') return toJSTDateString(d);
     if (period === 'week') {
-      const dt = new Date(d);
+      const dt = new Date(new Date(d).toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' }));
       const day = dt.getDay();
       const diff = dt.getDate() - day + (day === 0 ? -6 : 1);
-      const mon = new Date(dt.setDate(diff));
-      return mon.toISOString().slice(0, 10);
+      dt.setDate(diff);
+      return toJSTDateString(dt.toISOString());
     }
-    return d.slice(0, 7);
+    // 月別はYYYY-MMのみ使用
+    const dt = new Date(new Date(d).toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' }));
+    return dt.toLocaleDateString('ja-JP', {
+      timeZone: 'Asia/Tokyo',
+      year: 'numeric',
+      month: '2-digit',
+    }).replace(/\//g, '-').slice(0, 7);
   };
 
   const studyMap = {}, usedMap = {};
