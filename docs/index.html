@@ -797,7 +797,7 @@ function renderHome() {
     <div class="balance-card">
       <div class="balance-label">余暇残高</div>
       <div class="balance-value ${balNeg ? 'balance-negative' : ''}">${fmtMin(s.balance)}</div>
-      <div class="balance-sub">余暇可能 ${fmtMin(s.totalLeisureAvailable)}　利用済 ${fmtMin(s.totalLeisureUsed)}</div>
+      <div class="balance-sub">総余暇時間 ${fmtMin(s.totalLeisureAvailable)}　利用済 ${fmtMin(s.totalLeisureUsed)}</div>
     </div>
     <div class="stat-grid">
       <div class="stat-card study">
@@ -805,7 +805,7 @@ function renderHome() {
         <div class="stat-value">${fmtMin(s.totalStudy)}</div>
       </div>
       <div class="stat-card leisure">
-        <div class="stat-label">余暇可能時間</div>
+        <div class="stat-label">総余暇時間</div>
         <div class="stat-value">${fmtMin(s.totalLeisureAvailable)}</div>
       </div>
     </div>
