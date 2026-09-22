@@ -6,134 +6,99 @@ const API_KEY = "YOUR_SECRET_API_KEY_HERE"; // 例: "family2024secret"
 // スプレッドシートのシート名
 const SHEET_NAME = "records";
 
+// 列定義（順序はシートの並びと一致させること）
+const HEADERS = ["id", "date", "type", "minutes", "note", "createdAt"];
+const NUM_COLS = HEADERS.length;
+const TZ = "Asia/Tokyo";
+
 // ============================================================
-// GETリクエスト処理（データ取得・バックアップ）
+// GETリクエスト処理
 // ============================================================
 function doGet(e) {
   try {
-    const key = e.parameter.apiKey;
-    if (key !== API_KEY) {
+    if (e.parameter.apiKey !== API_KEY) {
       return jsonResponse({ error: "Unauthorized" });
     }
-
-    const action = e.parameter.action;
-    const sheet = getSheet();
-
-    if (action === "getRecords") {
-      const records = getAllRecords(sheet);
-      return jsonResponse({ records });
-    }
-
-    if (action === "getSummary") {
-      const records = getAllRecords(sheet);
-      const summary = calcSummary(records);
-      return jsonResponse(summary);
-    }
-
-    if (action === "backup") {
-      const records = getAllRecords(sheet);
-      return jsonResponse({ records, exportedAt: new Date().toISOString() });
-    }
-
-    if (action === "addRecord") {
-      const { date, type, minutes, note } = e.parameter;
-      const id = Utilities.getUuid();
-      const now = new Date().toISOString();
-      sheet.appendRow([id, date, type, Number(minutes), note || "", now]);
-      return jsonResponse({ success: true, id });
-    }
-
-    if (action === "deleteRecord") {
-      const { id } = e.parameter;
-      const data = sheet.getDataRange().getValues();
-      for (let i = 1; i < data.length; i++) {
-        if (data[i][0] === id) {
-          sheet.deleteRow(i + 1);
-          return jsonResponse({ success: true });
-        }
-      }
-      return jsonResponse({ error: "Record not found" });
-    }
-
-    if (action === "restore") {
-      const records = JSON.parse(e.parameter.records);
-      const lastRow = sheet.getLastRow();
-      if (lastRow > 1) {
-        sheet.deleteRows(2, lastRow - 1);
-      }
-      records.forEach(r => {
-        sheet.appendRow([r.id, r.date, r.type, r.minutes, r.note || "", r.createdAt]);
-      });
-      return jsonResponse({ success: true, restored: records.length });
-    }
-
-    return jsonResponse({ error: "Unknown action" });
+    return handleAction(e.parameter.action, e.parameter);
   } catch (err) {
     return jsonResponse({ error: err.message });
   }
 }
 
 // ============================================================
-// POSTリクエスト処理（データ書き込み・削除・リストア）
+// POSTリクエスト処理
 // ============================================================
 function doPost(e) {
   try {
     const body = JSON.parse(e.postData.contents);
-    const key = body.apiKey;
-    if (key !== API_KEY) {
-      return jsonResponse({ error: "Unauthorized" }, 401);
+    if (body.apiKey !== API_KEY) {
+      return jsonResponse({ error: "Unauthorized" });
     }
-
-    const action = body.action;
-    const sheet = getSheet();
-
-    // 学習時間 or 余暇利用時間を記録
-    if (action === "addRecord") {
-      const { date, type, minutes, note } = body;
-      // type: "study" or "leisure_used"
-      const id = Utilities.getUuid();
-      const now = new Date().toISOString();
-      sheet.appendRow([id, date, type, minutes, note || "", now]);
-      return jsonResponse({ success: true, id });
-    }
-
-    // レコード削除
-    if (action === "deleteRecord") {
-      const { id } = body;
-      const data = sheet.getDataRange().getValues();
-      for (let i = 1; i < data.length; i++) {
-        if (data[i][0] === id) {
-          sheet.deleteRow(i + 1);
-          return jsonResponse({ success: true });
-        }
-      }
-      return jsonResponse({ error: "Record not found" }, 404);
-    }
-
-    // バックアップからリストア
-    if (action === "restore") {
-      const { records } = body;
-      // 既存データを全削除（ヘッダー以外）
-      const lastRow = sheet.getLastRow();
-      if (lastRow > 1) {
-        sheet.deleteRows(2, lastRow - 1);
-      }
-      // 全レコードを挿入
-      records.forEach(r => {
-        sheet.appendRow([r.id, r.date, r.type, r.minutes, r.note || "", r.createdAt]);
-      });
-      return jsonResponse({ success: true, restored: records.length });
-    }
-
-    return jsonResponse({ error: "Unknown action" }, 400);
-
+    return handleAction(body.action, body);
   } catch (err) {
-    return jsonResponse({ error: err.message }, 500);
+    return jsonResponse({ error: err.message });
   }
 }
 
 // ============================================================
-// ヘルパー関数
+// アクション本体（GET/POSTで共通）
+// ============================================================
+function handleAction(action, p) {
+  const sheet = getSheet();
+
+  if (action === "getRecords") {
+    return jsonResponse({ records: getAllRecords(sheet) });
+  }
+
+  if (action === "getSummary") {
+    return jsonResponse(calcSummary(getAllRecords(sheet)));
+  }
+
+  if (action === "backup") {
+    return jsonResponse({
+      records: getAllRecords(sheet),
+      exportedAt: new Date().toISOString(),
+    });
+  }
+
+  // 追加した1件をそのまま返す。クライアントは再取得なしで画面を更新できる
+  if (action === "addRecord") {
+    return withLock(() => {
+      const record = {
+        id: Utilities.getUuid(),
+        date: p.date,
+        type: p.type,
+        minutes: Number(p.minutes),
+        note: p.note || "",
+        createdAt: new Date().toISOString(),
+      };
+      sheet.appendRow(HEADERS.map(h => record[h]));
+      return jsonResponse({ success: true, id: record.id, record });
+    });
+  }
+
+  if (action === "deleteRecord") {
+    return withLock(() => {
+      const deleted = deleteRecordById(sheet, p.id);
+      return deleted
+        ? jsonResponse({ success: true, id: p.id })
+        : jsonResponse({ error: "Record not found" });
+    });
+  }
+
+  if (action === "restore") {
+    return withLock(() => {
+      const records = typeof p.records === "string" ? JSON.parse(p.records) : p.records;
+      const restored = restoreRecords(sheet, records || []);
+      return jsonResponse({ success: true, restored });
+    });
+  }
+
+  return jsonResponse({ error: "Unknown action" });
+}
+
+// ============================================================
+// シート操作
 // ============================================================
 
 function getSheet() {
@@ -141,51 +106,96 @@ function getSheet() {
   let sheet = ss.getSheetByName(SHEET_NAME);
   if (!sheet) {
     sheet = ss.insertSheet(SHEET_NAME);
-    sheet.appendRow(["id", "date", "type", "minutes", "note", "createdAt"]);
+    sheet.appendRow(HEADERS);
   }
   return sheet;
 }
 
 function getAllRecords(sheet) {
-  const data = sheet.getDataRange().getValues();
-  if (data.length <= 1) return [];
-  const headers = data[0];
-  return data.slice(1).map(row => {
-    const obj = {};
-    headers.forEach((h, i) => {
-      if (row[i] instanceof Date) {
-        obj[h] = Utilities.formatDate(row[i], 'Asia/Tokyo', 'yyyy-MM-dd');
-      } else {
-        obj[h] = row[i];
-      }
-    });
-    obj.minutes = Number(obj.minutes);
-    return obj;
-  });
+  const lastRow = sheet.getLastRow();
+  if (lastRow <= 1) return [];
+
+  // getDataRange()ではなく必要な範囲だけ読む（余分な列・書式のみの行を拾わない）
+  const rows = sheet.getRange(2, 1, lastRow - 1, NUM_COLS).getValues();
+  const out = new Array(rows.length);
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    out[i] = {
+      id: row[0],
+      date: cellToString(row[1]),
+      type: row[2],
+      minutes: Number(row[3]),
+      note: row[4],
+      createdAt: cellToString(row[5]),
+    };
+  }
+  return out;
+}
+
+// 削除対象を探すのにid列（A列）だけ読む。全列読み込みに比べて転送量が1/6になる
+function deleteRecordById(sheet, id) {
+  const lastRow = sheet.getLastRow();
+  if (lastRow <= 1) return false;
+
+  const ids = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
+  for (let i = 0; i < ids.length; i++) {
+    if (ids[i][0] === id) {
+      sheet.deleteRow(i + 2); // ヘッダー行ぶん+1、0始まりぶん+1
+      return true;
+    }
+  }
+  return false;
+}
+
+// appendRowをループで呼ぶと1件ごとにシートへ往復するため、setValuesで一括書き込みする
+function restoreRecords(sheet, records) {
+  const lastRow = sheet.getLastRow();
+  if (lastRow > 1) sheet.deleteRows(2, lastRow - 1);
+  if (!records.length) return 0;
+
+  const values = records.map(r => [
+    r.id, r.date, r.type, Number(r.minutes), r.note || "", r.createdAt,
+  ]);
+  sheet.getRange(2, 1, values.length, NUM_COLS).setValues(values);
+  return values.length;
+}
+
+// ============================================================
+// ヘルパー関数
+// ============================================================
+
+// 同時書き込みで行がずれたり二重登録されたりするのを防ぐ
+function withLock(fn) {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    return fn();
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function cellToString(v) {
+  return v instanceof Date ? Utilities.formatDate(v, TZ, "yyyy-MM-dd") : v;
 }
 
 function calcSummary(records) {
-  // 総学習時間（分）
-  const totalStudy = records
-    .filter(r => r.type === "study")
-    .reduce((sum, r) => sum + r.minutes, 0);
+  let totalStudy = 0;
+  let totalLeisureUsed = 0;
+  for (let i = 0; i < records.length; i++) {
+    const r = records[i];
+    if (r.type === "study") totalStudy += r.minutes;
+    else if (r.type === "leisure_used") totalLeisureUsed += r.minutes;
+  }
 
   // 余暇可能時間 = 学習時間 × 1/4
   const totalLeisureAvailable = Math.floor(totalStudy / 4);
-
-  // 余暇利用時間
-  const totalLeisureUsed = records
-    .filter(r => r.type === "leisure_used")
-    .reduce((sum, r) => sum + r.minutes, 0);
-
-  // 余暇残高
-  const leisureBalance = totalLeisureAvailable - totalLeisureUsed;
 
   return {
     totalStudy,
     totalLeisureAvailable,
     totalLeisureUsed,
-    leisureBalance,
+    leisureBalance: totalLeisureAvailable - totalLeisureUsed,
   };
 }
 
