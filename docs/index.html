@@ -722,8 +722,13 @@ window.addEventListener('DOMContentLoaded', () => {
   }
 });
 
+// toISOString()はUTCなので、日本時間の0:00〜8:59だと前日の日付になってしまう
+function todayJST() {
+  return DATE_FMT.format(new Date()).replace(/\//g, '-');
+}
+
 function setTodayDates() {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayJST();
   document.getElementById('study-date').value = today;
   document.getElementById('leisure-date').value = today;
 }
@@ -1097,7 +1102,7 @@ async function doBackup() {
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = `manabi-backup-${new Date().toISOString().slice(0,10)}.json`;
+  a.download = `manabi-backup-${todayJST()}.json`;
   a.click();
   showToast('バックアップをダウンロードしました');
 }
