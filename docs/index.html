@@ -640,7 +640,7 @@
     </div>
     <div style="font-size:0.72rem;color:var(--ink-light);text-align:center;margin-top:16px;line-height:1.8">
       まなびバンク<br>
-      余暇可能時間 ＝ 学習時間 × 1/4
+      余暇可能時間 ＝ 学習時間 × 1/3
     </div>
   </div>
 </div>
@@ -654,6 +654,10 @@
 // =====================================================
 let GAS_URL = '';
 let API_KEY = '';
+// 学習時間のうち余暇可能時間になる割合（学習時間 ÷ この値）
+// backend/gas_code.js の LEISURE_DIVISOR と必ず同じ値にすること
+const LEISURE_DIVISOR = 3;
+
 let records = [];
 let sortedRecords = [];   // createdAt降順。描画のたびにソートし直さないよう保持する
 let chartStudy = null;
@@ -758,7 +762,7 @@ function renderAll() {
 // =====================================================
 function calcSummary() {
   const totalStudy = records.filter(r => r.type === 'study').reduce((s, r) => s + r.minutes, 0);
-  const totalLeisureAvailable = Math.floor(totalStudy / 4);
+  const totalLeisureAvailable = Math.floor(totalStudy / LEISURE_DIVISOR);
   const totalLeisureUsed = records.filter(r => r.type === 'leisure_used').reduce((s, r) => s + r.minutes, 0);
   return { totalStudy, totalLeisureAvailable, totalLeisureUsed, balance: totalLeisureAvailable - totalLeisureUsed };
 }
@@ -1048,7 +1052,7 @@ function groupRecords(period) {
   return {
     labels: recent,
     study: recent.map(k => studyMap[k] || 0),
-    available: recent.map(k => Math.floor((studyMap[k] || 0) / 4)),
+    available: recent.map(k => Math.floor((studyMap[k] || 0) / LEISURE_DIVISOR)),
     used: recent.map(k => usedMap[k] || 0),
   };
 }

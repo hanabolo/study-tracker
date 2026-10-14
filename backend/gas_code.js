@@ -3,6 +3,10 @@
 // ============================================================
 const API_KEY = "YOUR_SECRET_API_KEY_HERE"; // 例: "family2024secret"
 
+// 学習時間のうち余暇可能時間になる割合（学習時間 ÷ この値）
+// 変更する場合は docs/index.html の LEISURE_DIVISOR も同じ値にすること
+const LEISURE_DIVISOR = 3;
+
 // スプレッドシートのシート名
 const SHEET_NAME = "records";
 
@@ -188,8 +192,8 @@ function calcSummary(records) {
     else if (r.type === "leisure_used") totalLeisureUsed += r.minutes;
   }
 
-  // 余暇可能時間 = 学習時間 × 1/4
-  const totalLeisureAvailable = Math.floor(totalStudy / 4);
+  // 余暇可能時間 = 学習時間 ÷ LEISURE_DIVISOR
+  const totalLeisureAvailable = Math.floor(totalStudy / LEISURE_DIVISOR);
 
   return {
     totalStudy,
