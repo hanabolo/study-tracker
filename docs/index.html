@@ -640,7 +640,8 @@
     </div>
     <div style="font-size:0.72rem;color:var(--ink-light);text-align:center;margin-top:16px;line-height:1.8">
       まなびバンク<br>
-      余暇可能時間 ＝ 学習時間 × 1/3
+      余暇可能時間 ＝ 学習時間 × 1/3<br>
+      （2026/10/13 以前の学習は × 1/4）
     </div>
   </div>
 </div>
@@ -654,9 +655,14 @@
 // =====================================================
 let GAS_URL = '';
 let API_KEY = '';
-// 学習時間のうち余暇可能時間になる割合（学習時間 ÷ この値）
-// backend/gas_code.js の LEISURE_DIVISOR と必ず同じ値にすること
-const LEISURE_DIVISOR = 3;
+// 余暇可能時間の係数スケジュール（学習時間 ÷ divisor）
+// 学習日（date）が from 以降の記録にその係数を適用する。from の昇順に並べること
+// 係数を変えるときは既存の行は残したまま末尾に追加する（過去分の残高が変わらないように）
+// backend/gas_code.js の LEISURE_RATES と必ず同じ内容にすること
+const LEISURE_RATES = [
+  { from: '0000-01-01', divisor: 4 },
+  { from: '2026-10-14', divisor: 3 },
+];
 
 let records = [];
 let sortedRecords = [];   // createdAt降順。描画のたびにソートし直さないよう保持する
@@ -760,10 +766,32 @@ function renderAll() {
 // =====================================================
 // SUMMARY CALC (client-side for speed)
 // =====================================================
+function divisorFor(date) {
+  const d = String(date).slice(0, 10);
+  let divisor = LEISURE_RATES[0].divisor;
+  for (const rate of LEISURE_RATES) {
+    if (d >= rate.from) divisor = rate.divisor;
+  }
+  return divisor;
+}
+
 function calcSummary() {
-  const totalStudy = records.filter(r => r.type === 'study').reduce((s, r) => s + r.minutes, 0);
-  const totalLeisureAvailable = Math.floor(totalStudy / LEISURE_DIVISOR);
-  const totalLeisureUsed = records.filter(r => r.type === 'leisure_used').reduce((s, r) => s + r.minutes, 0);
+  let totalStudy = 0, totalLeisureUsed = 0;
+  const studyByDivisor = {};
+  for (const r of records) {
+    if (r.type === 'study') {
+      totalStudy += r.minutes;
+      const div = divisorFor(r.date);
+      studyByDivisor[div] = (studyByDivisor[div] || 0) + r.minutes;
+    } else if (r.type === 'leisure_used') {
+      totalLeisureUsed += r.minutes;
+    }
+  }
+  // 係数ごとに切り捨ててから合算する（バックエンドと同じ計算）
+  let totalLeisureAvailable = 0;
+  for (const div in studyByDivisor) {
+    totalLeisureAvailable += Math.floor(studyByDivisor[div] / Number(div));
+  }
   return { totalStudy, totalLeisureAvailable, totalLeisureUsed, balance: totalLeisureAvailable - totalLeisureUsed };
 }
 
@@ -1039,10 +1067,14 @@ function bucketKey(period, date) {
 }
 
 function groupRecords(period) {
-  const studyMap = {}, usedMap = {};
+  // 週・月のバケットは切替日をまたぐことがあるので、記録ごとの係数で割った値を積み上げる
+  const studyMap = {}, availMap = {}, usedMap = {};
   records.forEach(r => {
     const key = bucketKey(period, r.date);
-    if (r.type === 'study') studyMap[key] = (studyMap[key] || 0) + r.minutes;
+    if (r.type === 'study') {
+      studyMap[key] = (studyMap[key] || 0) + r.minutes;
+      availMap[key] = (availMap[key] || 0) + r.minutes / divisorFor(r.date);
+    }
     if (r.type === 'leisure_used') usedMap[key] = (usedMap[key] || 0) + r.minutes;
   });
 
@@ -1052,7 +1084,7 @@ function groupRecords(period) {
   return {
     labels: recent,
     study: recent.map(k => studyMap[k] || 0),
-    available: recent.map(k => Math.floor((studyMap[k] || 0) / LEISURE_DIVISOR)),
+    available: recent.map(k => Math.floor(availMap[k] || 0)),
     used: recent.map(k => usedMap[k] || 0),
   };
 }
