@@ -3,6 +3,15 @@
 // ============================================================
 const API_KEY = "YOUR_SECRET_API_KEY_HERE"; // 例: "family2024secret"
 
+// 余暇可能時間の係数スケジュール（学習時間 ÷ divisor）
+// 学習日（date）が from 以降の記録にその係数を適用する。from の昇順に並べること
+// 係数を変えるときは既存の行は残したまま末尾に追加する（過去分の残高が変わらないように）
+// docs/index.html の LEISURE_RATES と必ず同じ内容にすること
+const LEISURE_RATES = [
+  { from: "0000-01-01", divisor: 4 },
+  { from: "2026-10-14", divisor: 3 },
+];
+
 // スプレッドシートのシート名
 const SHEET_NAME = "records";
 
@@ -179,17 +188,35 @@ function cellToString(v) {
   return v instanceof Date ? Utilities.formatDate(v, TZ, "yyyy-MM-dd") : v;
 }
 
+function divisorFor(date) {
+  const d = String(date).slice(0, 10);
+  let divisor = LEISURE_RATES[0].divisor;
+  for (let i = 0; i < LEISURE_RATES.length; i++) {
+    if (d >= LEISURE_RATES[i].from) divisor = LEISURE_RATES[i].divisor;
+  }
+  return divisor;
+}
+
 function calcSummary(records) {
   let totalStudy = 0;
   let totalLeisureUsed = 0;
+  const studyByDivisor = {};
   for (let i = 0; i < records.length; i++) {
     const r = records[i];
-    if (r.type === "study") totalStudy += r.minutes;
-    else if (r.type === "leisure_used") totalLeisureUsed += r.minutes;
+    if (r.type === "study") {
+      totalStudy += r.minutes;
+      const div = divisorFor(r.date);
+      studyByDivisor[div] = (studyByDivisor[div] || 0) + r.minutes;
+    } else if (r.type === "leisure_used") {
+      totalLeisureUsed += r.minutes;
+    }
   }
 
-  // 余暇可能時間 = 学習時間 × 1/4
-  const totalLeisureAvailable = Math.floor(totalStudy / 4);
+  // 係数ごとに切り捨ててから合算する。こうすると切替日より前の分は従来の値と完全に一致する
+  let totalLeisureAvailable = 0;
+  for (const div in studyByDivisor) {
+    totalLeisureAvailable += Math.floor(studyByDivisor[div] / Number(div));
+  }
 
   return {
     totalStudy,
